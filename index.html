@@ -846,6 +846,15 @@ function renderDrivers() {
         if (!drafted) {
             card.onclick = () => draftDriver(d);
         }
+        card.setAttribute('role', 'button');
+        card.tabIndex = 0;
+        card.setAttribute('aria-pressed', String(drafted));
+        card.onkeydown = event => {
+            if (event.key === 'Enter' || event.key === ' ') {
+                event.preventDefault();
+                card.click();
+            }
+        };
         grid.appendChild(card);
     });
 }
@@ -893,8 +902,7 @@ function updateDraftUI() {
     }
 
     // Show chips
-    const existingChips = status.querySelectorAll('.roster-chip');
-    existingChips.forEach(c => c.remove());
+    status.querySelectorAll('.roster').forEach(roster => roster.remove());
     if (n > 0) {
         const rosterDiv = document.createElement('div');
         rosterDiv.className = 'roster';
@@ -904,6 +912,15 @@ function updateDraftUI() {
             chip.className = 'roster-chip';
             chip.textContent = `${d.name} ${d.ovr}`;
             chip.onclick = () => undraftDriver(d.id);
+            chip.setAttribute('role', 'button');
+            chip.tabIndex = 0;
+            chip.setAttribute('aria-label', `Remove ${d.name}`);
+            chip.onkeydown = event => {
+                if (event.key === 'Enter' || event.key === ' ') {
+                    event.preventDefault();
+                    chip.click();
+                }
+            };
             chip.style.cursor = 'pointer';
             chip.title = 'Tap to remove';
             rosterDiv.appendChild(chip);
@@ -942,6 +959,9 @@ $('start-btn').onclick = () => {
     switchScreen('season');
     $('race-counter').textContent = '1';
     $('race-counter-end') && ($('race-counter-end').textContent = '1');
+    $('season-wins').textContent = '0';
+    $('season-streak').textContent = '0';
+    $('season-points').textContent = '0';
     showNextRace();
 };
 
@@ -964,9 +984,8 @@ function showNextRace() {
 $('race-btn').onclick = () => {
     const i = state.season.results.length;
     const race = SCHEDULE[i];
-    // Player uses best drafted driver as primary; pool of 6 allows occasional rotation
-    // For simplicity: use primary driver for entire season
-    const playerOVR = state.season.primaryDriver.ovr + totalBonus(state.season.allDrafted);
+    const drafted = state.season.allDrafted;
+    const playerOVR = drafted.reduce((sum, d) => sum + d.ovr, 0) / drafted.length + totalBonus(drafted);
     const result = simulateRace(playerOVR, race.type, state.rng);
     const pts = pointsForPos(result.playerPos, i);
     const win = result.playerPos === 1;
@@ -1114,7 +1133,7 @@ $('share-btn').onclick = () => {
         navigator.clipboard.writeText(text).then(() => {
             $('share-btn').textContent = '✅ Copied!';
             setTimeout(() => $('share-btn').textContent = '📋 Copy Share Text', 1500);
-        });
+        }).catch(() => alert(text));
     } else {
         alert(text);
     }
